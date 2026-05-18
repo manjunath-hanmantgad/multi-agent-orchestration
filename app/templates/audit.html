@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <h1 class="panel-title">Audit Trail</h1>
+    <a href="/review/{{ workflow.id }}" class="link-btn">Back to Review</a>
+  </div>
+
+  <div class="meta-grid">
+    <div><span class="meta-label">Workflow ID</span><span class="mono">{{ workflow.id }}</span></div>
+    <div><span class="meta-label">Workflow Type</span><span>{{ workflow.workflow_type.replace("_", " ").title() }}</span></div>
+    <div><span class="meta-label">Status</span><span class="status-badge {{ workflow.status_class }}">{{ workflow.status }}</span></div>
+  </div>
+
+  <ol class="timeline">
+    {% for item in timeline %}
+    <li class="timeline-item">
+      <div class="timeline-head">
+        <span class="timeline-stage">{{ item.stage.replace("_", " ").title() }}</span>
+        <span class="actor-badge {{ item.actor_class }}">{{ item.actor }}</span>
+      </div>
+      <div class="timeline-meta">
+        <span>{{ item.timestamp }}</span>
+        <span>{{ item.event_type.replace("_", " ").title() }}</span>
+      </div>
+      <details class="timeline-details">
+        <summary>View Event Data</summary>
+        <dl class="kv-list">
+          {% for pair in item.pairs %}
+          <div class="kv-row">
+            <dt>{{ pair.key.replace("_", " ").title() }}</dt>
+            <dd>{{ pair.value }}</dd>
+          </div>
+          {% else %}
+          <div class="kv-row"><dt>Details</dt><dd>No event details.</dd></div>
+          {% endfor %}
+        </dl>
+      </details>
+    </li>
+    {% else %}
+    <li class="empty-state">No audit events found for this workflow.</li>
+    {% endfor %}
+  </ol>
+</section>
+{% endblock %}

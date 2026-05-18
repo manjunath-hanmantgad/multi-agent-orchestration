@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <h1 class="panel-title">Workflow Dashboard</h1>
+    <a href="/demo/start" class="primary-btn">Start New Workflow</a>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table" data-run-table="true">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Current Stage</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody data-run-rows>
+        {% for run in runs %}
+        <tr>
+          <td class="mono">{{ run.id_short }}</td>
+          <td>{{ run.workflow_type.replace("_", " ").title() }}</td>
+          <td><span class="status-badge {{ run.status_class }}">{{ run.status }}</span></td>
+          <td>{{ run.current_stage.replace("_", " ").title() }}</td>
+          <td>{{ run.created_at }}</td>
+          <td class="actions-cell">
+            <a href="/review/{{ run.id }}" class="link-btn">Review</a>
+            <a href="/audit/{{ run.id }}" class="link-btn">Audit</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="empty-state">No workflows available.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

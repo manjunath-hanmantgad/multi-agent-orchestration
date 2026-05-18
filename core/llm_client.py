@@ -1,0 +1,96 @@
+"""Unified LLM client factory for supported providers."""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+
+from dotenv import load_dotenv
+from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
+from pydantic import ValidationError
+
+DEFAULT_PROVIDER = "anthropic"
+DEFAULT_MODELS = {
+    "anthropic": "claude-sonnet-4-6",
+    "openai": "gpt-4o-mini",
+}
+TIMEOUT_SECONDS = 30
+
+
+class LLMClientError(RuntimeError):
+    """Raised for LLM configuration and client construction failures."""
+
+
+@dataclass(frozen=True)
+class LLMSettings:
+    """Resolved settings required to construct the configured LLM client."""
+
+    provider: str
+    model: str
+    api_key: str
+
+
+def _require_api_key(provider: str) -> str:
+    """Return provider API key or raise a clear configuration error."""
+    key_env_map = {
+        "anthropic": "ANTHROPIC_API_KEY",
+        "openai": "OPENAI_API_KEY",
+    }
+    env_name = key_env_map[provider]
+    api_key = os.getenv(env_name)
+    if not api_key:
+        raise LLMClientError(
+            f"Missing required environment variable: {env_name} "
+            f"(provider={provider})"
+        )
+    return api_key
+
+
+def _load_settings() -> LLMSettings:
+    """Load and validate provider configuration from environment variables."""
+    load_dotenv()
+    provider = os.getenv("LLM_PROVIDER", DEFAULT_PROVIDER).strip().lower()
+    if provider not in {"anthropic", "openai"}:
+        raise LLMClientError(f"Unsupported LLM_PROVIDER: {provider}")
+    model = os.getenv("LLM_MODEL", DEFAULT_MODELS[provider]).strip()
+    if not model:
+        raise LLMClientError("LLM_MODEL must not be empty")
+    api_key = _require_api_key(provider)
+    return LLMSettings(provider=provider, model=model, api_key=api_key)
+
+
+SETTINGS = _load_settings()
+
+
+def _build_anthropic_client(settings: LLMSettings) -> ChatAnthropic:
+    """Construct Anthropic chat client with consistent timeout behavior."""
+    return ChatAnthropic(
+        model=settings.model,
+        anthropic_api_key=settings.api_key,
+        default_request_timeout=TIMEOUT_SECONDS,
+    )
+
+
+def _build_openai_client(settings: LLMSettings) -> ChatOpenAI:
+    """Construct OpenAI chat client with consistent timeout behavior."""
+    return ChatOpenAI(
+        model=settings.model,
+        openai_api_key=settings.api_key,
+        request_timeout=TIMEOUT_SECONDS,
+    )
+
+
+def get_llm_client() -> ChatAnthropic | ChatOpenAI:
+    """Return configured LLM client for the active provider."""
+    try:
+        if SETTINGS.provider == "anthropic":
+            return _build_anthropic_client(SETTINGS)
+        return _build_openai_client(SETTINGS)
+    except (ValidationError, TypeError, ValueError, RuntimeError) as exc:
+        message = (
+            "Failed to initialize LLM client "
+            f"provider={SETTINGS.provider} model={SETTINGS.model} "
+            f"error_type={type(exc).__name__}: {exc}"
+        )
+        raise LLMClientError(message) from exc
