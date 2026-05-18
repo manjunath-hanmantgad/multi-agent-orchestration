@@ -210,6 +210,22 @@ uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 
 ---
 
+## Screenshots
+
+**Dashboard** — three workflow states, live from the database
+
+![Dashboard](demo/dashboard.png)
+
+**Human review screen** — extracted fields, rule results, risk score, decision form
+
+![Human Review](demo/review-screen.png)
+
+**Audit trail** — ordered event timeline, SYSTEM and HUMAN actor labels
+
+![Audit Trail](demo/audit-trail.png)
+
+---
+
 ## Demo Walkthrough
 
 **Five minutes, three screens:**
