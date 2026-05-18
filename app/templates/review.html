@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <h1 class="panel-title">Human Review</h1>
+    <span class="status-badge {{ context.status_class }}">{{ context.status }}</span>
+  </div>
+
+  <div class="meta-grid">
+    <div><span class="meta-label">Workflow ID</span><span class="mono">{{ context.workflow_id }}</span></div>
+    <div><span class="meta-label">Workflow Type</span><span>{{ context.workflow_type.replace("_", " ").title() }}</span></div>
+    <div><span class="meta-label">Current Stage</span><span>{{ context.current_stage.replace("_", " ").title() }}</span></div>
+  </div>
+
+  <div class="content-grid">
+    <article class="subpanel">
+      <h2 class="subpanel-title">Extracted Data Summary</h2>
+      <dl class="kv-list">
+        {% for item in context.extracted_summary %}
+        <div class="kv-row">
+          <dt>{{ item.label }}</dt>
+          <dd>{{ item.value }}</dd>
+        </div>
+        {% endfor %}
+      </dl>
+    </article>
+
+    <article class="subpanel">
+      <h2 class="subpanel-title">Rule Check Results</h2>
+      <dl class="kv-list compact">
+        {% for item in context.rule_summary %}
+        <div class="kv-row">
+          <dt>{{ item.label }}</dt>
+          <dd>{{ item.value }}</dd>
+        </div>
+        {% endfor %}
+      </dl>
+      <div class="table-wrap mini">
+        <table class="data-table">
+          <thead>
+            <tr><th>Rule</th><th>Field</th><th>Severity</th><th>Result</th></tr>
+          </thead>
+          <tbody>
+            {% for row in context.rule_rows %}
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{{ row.field.replace("_", " ").title() }}</td>
+              <td>{{ row.severity }}</td>
+              <td>{{ row.status }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="empty-state">No rule rows available.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </div>
+
+  <article class="subpanel">
+    <h2 class="subpanel-title">Risk Analysis</h2>
+    <div class="risk-block">
+      <div class="risk-score">Risk Score: <strong>{{ context.risk_score }}</strong></div>
+      <p class="risk-reasoning">{{ context.risk_reasoning }}</p>
+    </div>
+  </article>
+
+  <article class="subpanel">
+    <h2 class="subpanel-title">Decision</h2>
+    <form id="decision-form" data-workflow-id="{{ context.workflow_id }}" class="decision-form">
+      <fieldset class="radio-group">
+        <label><input type="radio" name="decision" value="APPROVED" checked /> Approve</label>
+        <label><input type="radio" name="decision" value="REJECTED" /> Reject</label>
+        <label><input type="radio" name="decision" value="REQUEST_MORE_INFO" /> Request More Info</label>
+      </fieldset>
+      <label class="textarea-label" for="decision-notes">Notes</label>
+      <textarea id="decision-notes" name="notes" rows="4" placeholder="Add reviewer notes"></textarea>
+      <button type="submit" class="primary-btn">Submit Decision</button>
+      <p id="decision-message" class="decision-message" aria-live="polite"></p>
+    </form>
+  </article>
+</section>
+{% endblock %}

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "CR-001",
+    "name": "Entity Name Match",
+    "description": "Legal entity name must match approved profile.",
+    "field": "entity_name",
+    "operator": "equals",
+    "value": "Meridian Supplies Ltd",
+    "severity": "high"
+  },
+  {
+    "id": "CR-002",
+    "name": "Country Eligibility",
+    "description": "Entity country must be India for this review flow.",
+    "field": "country",
+    "operator": "equals",
+    "value": "IN",
+    "severity": "high"
+  },
+  {
+    "id": "CR-003",
+    "name": "Revenue Threshold",
+    "description": "Annual revenue must be greater than one million.",
+    "field": "annual_revenue",
+    "operator": "greater_than",
+    "value": 1000000,
+    "severity": "medium"
+  },
+  {
+    "id": "CR-004",
+    "name": "Tax Declaration Present",
+    "description": "Document text must include tax declaration language.",
+    "field": "full_text",
+    "operator": "contains",
+    "value": "Tax Declaration",
+    "severity": "medium"
+  },
+  {
+    "id": "CR-005",
+    "name": "Sanctions Clearance",
+    "description": "Sanctions check must explicitly be clear.",
+    "field": "sanctions_clearance",
+    "operator": "equals",
+    "value": "clear",
+    "severity": "critical"
+  }
+]

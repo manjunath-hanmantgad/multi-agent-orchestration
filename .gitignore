@@ -1,0 +1,67 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Secrets
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Agent internal files (never push)
+.agent/
+CODEX_INSTRUCTIONS.md
+REVIEWER_INSTRUCTIONS.md
+TASKS.md
+consolidated-agentic-pattern-guide.md
+project_build_reference.md
+*-Projects.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Database (local only)
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# Generated outputs (never commit pipeline outputs)
+outputs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+logs/
