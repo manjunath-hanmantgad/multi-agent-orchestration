@@ -1,0 +1,29 @@
+services:
+  api:
+    build: .
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8010 --reload
+    env_file:
+      - .env.example
+    ports:
+      - "8010:8010"
+    volumes:
+      - workflow-storage:/app/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8010/health').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  ui:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8020 --reload
+    env_file:
+      - .env.example
+    ports:
+      - "8020:8020"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  workflow-storage:

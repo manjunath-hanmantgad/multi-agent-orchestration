@@ -65,20 +65,47 @@ SETTINGS = _load_settings()
 
 def _build_anthropic_client(settings: LLMSettings) -> ChatAnthropic:
     """Construct Anthropic chat client with consistent timeout behavior."""
-    return ChatAnthropic(
+    model = ChatAnthropic(
         model=settings.model,
         anthropic_api_key=settings.api_key,
         default_request_timeout=TIMEOUT_SECONDS,
     )
+    handler = _get_langfuse_handler()
+    if handler is None:
+        return model
+    callbacks = [handler]
+    return model.with_config({"callbacks": callbacks})
 
 
 def _build_openai_client(settings: LLMSettings) -> ChatOpenAI:
     """Construct OpenAI chat client with consistent timeout behavior."""
-    return ChatOpenAI(
+    model = ChatOpenAI(
         model=settings.model,
         openai_api_key=settings.api_key,
         request_timeout=TIMEOUT_SECONDS,
     )
+    handler = _get_langfuse_handler()
+    if handler is None:
+        return model
+    callbacks = [handler]
+    return model.with_config({"callbacks": callbacks})
+
+
+def _get_langfuse_handler():
+    lf_key = os.getenv("LANGFUSE_PUBLIC_KEY", "").strip()
+    lf_secret = os.getenv("LANGFUSE_SECRET_KEY", "").strip()
+    if not (lf_key and lf_secret):
+        return None
+    try:
+        from langfuse.callback import CallbackHandler
+
+        return CallbackHandler(
+            public_key=lf_key,
+            secret_key=lf_secret,
+            host=os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com"),
+        )
+    except Exception:
+        return None
 
 
 def get_llm_client() -> ChatAnthropic | ChatOpenAI:

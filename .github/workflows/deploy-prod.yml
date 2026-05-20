@@ -1,0 +1,113 @@
+name: Deploy to Production
+
+# Triggered by: git tag push, e.g. git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+# Required GitHub Variables (repo Settings > Variables > Actions):
+#   ACR_LOGIN_SERVER
+#   MAW_PROD_RESOURCE_GROUP
+#   MAW_PROD_API_CONTAINER_APP
+#   MAW_PROD_UI_CONTAINER_APP
+#   MAW_PROD_API_URL
+#
+# Required GitHub Secrets:
+#   ACR_USERNAME
+#   ACR_PASSWORD
+#   AZURE_CREDENTIALS
+#
+# Required GitHub Environment:
+#   Create environment named "production" in repo Settings > Environments
+#   Add required reviewers (yourself) to gate this deployment
+
+env:
+  IMAGE_NAME: multi-agent-workflow
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.tag.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract tag version
+        id: tag
+        run: echo "version=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Log in to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push production image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ vars.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.version }}
+            ${{ vars.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:prod-latest
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: production
+
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy API
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          containerAppName: ${{ vars.MAW_PROD_API_CONTAINER_APP }}
+          resourceGroup: ${{ vars.MAW_PROD_RESOURCE_GROUP }}
+          imageToDeploy: ${{ vars.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image-tag }}
+
+      - name: Deploy UI
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          containerAppName: ${{ vars.MAW_PROD_UI_CONTAINER_APP }}
+          resourceGroup: ${{ vars.MAW_PROD_RESOURCE_GROUP }}
+          imageToDeploy: ${{ vars.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image-tag }}
+
+  validate-production:
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-production]
+
+    steps:
+      - name: Wait for containers to stabilise
+        run: sleep 45
+
+      - name: Health - API
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" ${{ vars.MAW_PROD_API_URL }}/health)
+          echo "Health: HTTP $code"
+          [ "$code" = "200" ] || exit 1
+
+      - name: Health - API envelope
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" ${{ vars.MAW_PROD_API_URL }}/api/health)
+          echo "API health: HTTP $code"
+          [ "$code" = "200" ] || exit 1
+
+      - name: Health - metrics
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" ${{ vars.MAW_PROD_API_URL }}/metrics)
+          echo "Metrics: HTTP $code"
+          [ "$code" = "200" ] || exit 1
+
+      - name: Post deployment summary
+        run: |
+          echo "## Production Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image tag:** ${{ needs.build-and-push.outputs.image-tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **API:** ${{ vars.MAW_PROD_API_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed at:** $(date -u)" >> $GITHUB_STEP_SUMMARY
