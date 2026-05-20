@@ -51,6 +51,8 @@ htmlcov/
 *.sqlite3
 *.db-shm
 *.db-wal
+storage/*.db
+data/*.db
 
 # Generated outputs (never commit pipeline outputs)
 outputs/

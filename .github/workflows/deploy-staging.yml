@@ -1,0 +1,89 @@
+# Required GitHub Variables (set in repo Settings > Variables > Actions):
+#   ACR_LOGIN_SERVER
+#   MAW_RESOURCE_GROUP
+#   MAW_API_CONTAINER_APP
+#   MAW_UI_CONTAINER_APP
+#   MAW_API_URL
+#
+# Required GitHub Secrets (set in repo Settings > Secrets > Actions):
+#   ACR_USERNAME
+#   ACR_PASSWORD
+#   AZURE_CREDENTIALS
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [main]
+
+env:
+  IMAGE_NAME: multi-agent-workflow
+  REGISTRY: ${{ vars.ACR_LOGIN_SERVER }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: meta
+        run: echo "version=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Log in to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ vars.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ vars.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: staging
+
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy API to staging Container App
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          containerAppName: ${{ vars.MAW_API_CONTAINER_APP }}
+          resourceGroup: ${{ vars.MAW_RESOURCE_GROUP }}
+          imageToDeploy: ${{ vars.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Deploy UI to staging Container App
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          containerAppName: ${{ vars.MAW_UI_CONTAINER_APP }}
+          resourceGroup: ${{ vars.MAW_RESOURCE_GROUP }}
+          imageToDeploy: ${{ vars.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+  smoke-test:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: ${{ vars.MAW_API_URL != '' }}
+
+    steps:
+      - name: Wait for deployment
+        run: sleep 30
+
+      - name: Health check - API
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ vars.MAW_API_URL }}/health)
+          echo "HTTP $response"
+          [ "$response" = "200" ] || exit 1

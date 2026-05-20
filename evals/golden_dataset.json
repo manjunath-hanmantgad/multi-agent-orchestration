@@ -1,0 +1,138 @@
+{
+  "version": "1.0",
+  "project": "multi-agent-workflow",
+  "cases": [
+    {
+      "id": "rule-001",
+      "description": "equals operator passes and is counted in passed bucket",
+      "category": "rule_engine",
+      "input": {
+        "document_data": {"country": "IN"},
+        "rules": [
+          {
+            "id": "r1",
+            "name": "Country Check",
+            "description": "country must equal IN",
+            "field": "country",
+            "operator": "equals",
+            "value": "IN",
+            "severity": "high"
+          }
+        ]
+      },
+      "expected": {"passed": 1, "failed": 0, "flagged": 0},
+      "requires_live_llm": false
+    },
+    {
+      "id": "rule-002",
+      "description": "contains operator works for list values",
+      "category": "rule_engine",
+      "input": {
+        "document_data": {"tags": ["approved", "urgent"]},
+        "rules": [
+          {
+            "id": "r2",
+            "name": "Urgency Tag",
+            "description": "tags should contain urgent",
+            "field": "tags",
+            "operator": "contains",
+            "value": "urgent",
+            "severity": "medium"
+          }
+        ]
+      },
+      "expected": {"passed": 1, "failed": 0, "flagged": 0},
+      "requires_live_llm": false
+    },
+    {
+      "id": "rule-003",
+      "description": "greater_than failure with high severity is failed",
+      "category": "rule_engine",
+      "input": {
+        "document_data": {"risk_score": 55},
+        "rules": [
+          {
+            "id": "r3",
+            "name": "Risk Score Ceiling",
+            "description": "risk score must be greater than 70",
+            "field": "risk_score",
+            "operator": "greater_than",
+            "value": 70,
+            "severity": "critical"
+          }
+        ]
+      },
+      "expected": {"passed": 0, "failed": 1, "flagged": 0},
+      "requires_live_llm": false
+    },
+    {
+      "id": "rule-004",
+      "description": "low severity failure is flagged",
+      "category": "rule_engine",
+      "input": {
+        "document_data": {"vendor_tier": "silver"},
+        "rules": [
+          {
+            "id": "r4",
+            "name": "Preferred Vendor",
+            "description": "vendor tier should equal gold",
+            "field": "vendor_tier",
+            "operator": "equals",
+            "value": "gold",
+            "severity": "low"
+          }
+        ]
+      },
+      "expected": {"passed": 0, "failed": 0, "flagged": 1},
+      "requires_live_llm": false
+    },
+    {
+      "id": "esc-001",
+      "description": "valid mid-range risk score triggers review",
+      "category": "escalation_trigger",
+      "input": {"risk_payload": {"risk_score": 80, "risk_reasoning": "High vendor concentration."}},
+      "expected": {"should_trigger": true},
+      "requires_live_llm": false
+    },
+    {
+      "id": "esc-002",
+      "description": "valid low risk score still triggers configured human review stage",
+      "category": "escalation_trigger",
+      "input": {"risk_payload": {"risk_score": 10, "risk_reasoning": "Minor issue detected."}},
+      "expected": {"should_trigger": true},
+      "requires_live_llm": false
+    },
+    {
+      "id": "esc-003",
+      "description": "invalid score outside 0-100 is rejected",
+      "category": "escalation_trigger",
+      "input": {"risk_payload": {"risk_score": 101, "risk_reasoning": "Out of range score."}},
+      "expected": {"should_trigger": false},
+      "requires_live_llm": false
+    },
+    {
+      "id": "esc-004",
+      "description": "missing reasoning rejects escalation payload",
+      "category": "escalation_trigger",
+      "input": {"risk_payload": {"risk_score": 40, "risk_reasoning": ""}},
+      "expected": {"should_trigger": false},
+      "requires_live_llm": false
+    },
+    {
+      "id": "state-001",
+      "description": "REQUEST_MORE_INFO transitions to RUNNING",
+      "category": "state_transition",
+      "input": {"decision": "REQUEST_MORE_INFO"},
+      "expected": {"next_status": "RUNNING"},
+      "requires_live_llm": false
+    },
+    {
+      "id": "state-002",
+      "description": "APPROVED decision transitions to APPROVED",
+      "category": "state_transition",
+      "input": {"decision": "APPROVED"},
+      "expected": {"next_status": "APPROVED"},
+      "requires_live_llm": false
+    }
+  ]
+}

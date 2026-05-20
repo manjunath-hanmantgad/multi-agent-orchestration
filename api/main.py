@@ -8,8 +8,9 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from api.dependencies import get_registry
 from api.routers import approvals, audit, workflows
@@ -54,6 +55,14 @@ def _register_lifecycle(app: FastAPI) -> None:
 
 
 def _register_health(app: FastAPI) -> None:
+    @app.get("/health")
+    async def plain_health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.get("/metrics", include_in_schema=False)
+    async def metrics_endpoint() -> Response:
+        return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
     @app.get("/api/health")
     async def health() -> dict[str, Any]:
         registry = get_registry()
