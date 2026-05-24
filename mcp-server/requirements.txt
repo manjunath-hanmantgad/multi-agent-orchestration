@@ -1,0 +1,9 @@
+# MCP Python SDK — pinned to latest stable release
+# Requires Python >= 3.10
+mcp==1.27.1
+
+# HTTP client for calling the FastAPI gateway
+httpx==0.27.2
+
+# Environment variable loading
+python-dotenv==1.0.1
