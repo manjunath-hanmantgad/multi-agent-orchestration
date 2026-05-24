@@ -44,9 +44,12 @@ class TestStartWorkflow:
     async def test_success_returns_key_value_pairs(self, mock_api_client: MagicMock):
         """Success path returns workflow_id, status, current_stage."""
         mock_api_client.start_workflow.return_value = {
-            "workflow_id": "wf-abc-123",
-            "status": "PAUSED",
-            "current_stage": "human_review",
+            "success": True,
+            "data": {
+                "workflow_id": "wf-abc-123",
+                "result": {"status": "PAUSED", "current_stage": "human_review"},
+            },
+            "error": None,
         }
         result = await handle_start_workflow(
             workflow_type="compliance_review",
@@ -92,10 +95,14 @@ class TestGetStatus:
     async def test_success_returns_all_fields(self, mock_api_client: MagicMock):
         """Success path returns workflow_id, status, current_stage, created_at."""
         mock_api_client.get_workflow_status.return_value = {
-            "workflow_id": "wf-abc-123",
-            "status": "RUNNING",
-            "current_stage": "severity_assessment",
-            "created_at": "2026-05-23T17:00:00Z",
+            "success": True,
+            "data": {
+                "id": "wf-abc-123",
+                "status": "RUNNING",
+                "current_stage": "severity_assessment",
+                "created_at": "2026-05-23T17:00:00Z",
+            },
+            "error": None,
         }
         result = await handle_get_status(workflow_id="wf-abc-123")
         assert "workflow_id: wf-abc-123" in result
@@ -125,8 +132,12 @@ class TestSubmitDecision:
     async def test_approve_returns_new_status(self, mock_api_client: MagicMock):
         """APPROVE decision returns workflow_id and new_status."""
         mock_api_client.submit_decision.return_value = {
-            "workflow_id": "wf-abc-123",
-            "new_status": "APPROVED",
+            "success": True,
+            "data": {
+                "workflow_id": "wf-abc-123",
+                "result": {"status": "APPROVED"},
+            },
+            "error": None,
         }
         result = await handle_submit_decision(
             workflow_id="wf-abc-123",
@@ -140,8 +151,12 @@ class TestSubmitDecision:
     async def test_reject_returns_rejected_status(self, mock_api_client: MagicMock):
         """REJECT decision returns workflow_id and REJECTED status."""
         mock_api_client.submit_decision.return_value = {
-            "workflow_id": "wf-abc-123",
-            "new_status": "REJECTED",
+            "success": True,
+            "data": {
+                "workflow_id": "wf-abc-123",
+                "result": {"status": "REJECTED"},
+            },
+            "error": None,
         }
         result = await handle_submit_decision(
             workflow_id="wf-abc-123",

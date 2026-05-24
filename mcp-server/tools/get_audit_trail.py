@@ -6,8 +6,24 @@ Returns the ordered event list as plain text, one event per line:
 """
 
 import client
+from core.tool_registry import registry
 
 
+@registry.register(
+    name="get_audit_trail",
+    description="Returns the ordered audit event timeline for a workflow as plain text — one event per line: timestamp | actor | event_type | stage.",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "workflow_id": {
+                "type": "string",
+                "description": "UUID of the workflow to audit",
+            },
+        },
+        "required": ["workflow_id"],
+    },
+    example_call='get_audit_trail(workflow_id="abc-123")',
+)
 async def handle_get_audit_trail(workflow_id: str) -> str:
     """Retrieve the ordered audit trail for a workflow.
 
