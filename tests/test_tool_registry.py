@@ -113,15 +113,20 @@ class TestImportSideEffects:
     """Verify importing the module has no side effects."""
 
     def test_import_does_not_trigger_db_or_network(self):
-        """Importing registry module must not make any external calls."""
-        # This test passes by virtue of not timing out or crashing.
-        # If the module made a network call, database query, or file write,
-        # it would either fail or be detectable here.
-        # Test with a fresh ToolRegistry() to isolate from any tool modules
-        # that may have been imported by other test files using the singleton.
-        from core.tool_registry import ToolRegistry
+        """Importing registry module must not make any external calls.
 
-        fresh = ToolRegistry()
-        assert hasattr(fresh, "list_tools")
-        # A fresh registry is empty — no tools registered
-        assert len(fresh) == 0
+        Patches socket, open, and sqlite3.connect so that any attempt to
+        use them during import raises AssertionError — making side effects
+        detectable rather than silently passing.
+        """
+        import sys
+        import importlib
+        from unittest.mock import patch
+
+        sys.modules.pop("core.tool_registry", None)
+        with patch("socket.socket", side_effect=AssertionError("network call during import")), \
+             patch("builtins.open", side_effect=AssertionError("file I/O during import")), \
+             patch("sqlite3.connect", side_effect=AssertionError("DB call during import")):
+            import core.tool_registry  # must not trigger any patched call
+
+        assert hasattr(core.tool_registry, "registry")

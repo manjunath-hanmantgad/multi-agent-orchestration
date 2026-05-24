@@ -47,19 +47,20 @@ mcp = FastMCP(
     log_level="INFO",
 )
 
-# --- Register MCP Tools ---
-# Each tool handler is defined in mcp-server/tools/ and is registered here
-# using FastMCP's functional `mcp.tool()(handler)` pattern.
+# --- Register MCP Tools from registry ---
+# Importing each tool module triggers its @registry.register decorator,
+# populating the singleton. The loop below then reads the registry as the
+# single source of truth — adding a new tool requires only a new module with
+# @registry.register; this file needs no change.
 
-from tools.start_workflow import handle_start_workflow
-from tools.get_status import handle_get_status
-from tools.submit_decision import handle_submit_decision
-from tools.get_audit_trail import handle_get_audit_trail
+from core.tool_registry import registry
+import tools.start_workflow   # noqa: F401 — triggers @registry.register
+import tools.get_status       # noqa: F401
+import tools.submit_decision  # noqa: F401
+import tools.get_audit_trail  # noqa: F401
 
-mcp.tool(name="start_workflow", description="Starts a new workflow run and returns workflow_id, status (PENDING/RUNNING/PAUSED/APPROVED/REJECTED/COMPLETED), and current_stage.")(handle_start_workflow)  # type: ignore[arg-type]
-mcp.tool(name="get_status", description="Returns workflow_id, status (PENDING/RUNNING/PAUSED/APPROVED/REJECTED/COMPLETED), current_stage, and created_at timestamp for a workflow.")(handle_get_status)  # type: ignore[arg-type]
-mcp.tool(name="submit_decision", description="Submits an APPROVE or REJECT decision for a paused workflow and returns workflow_id and new_status (APPROVED/REJECTED/COMPLETED/PAUSED).")(handle_submit_decision)  # type: ignore[arg-type]
-mcp.tool(name="get_audit_trail", description="Returns the ordered audit event timeline for a workflow as plain text — one event per line: timestamp | actor | event_type | stage.")(handle_get_audit_trail)  # type: ignore[arg-type]
+for _tool in registry.list_tools():
+    mcp.tool(name=_tool["name"], description=_tool["description"])(_tool["handler"])  # type: ignore[arg-type]
 
 
 def main():
