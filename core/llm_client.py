@@ -121,3 +121,43 @@ def get_llm_client() -> ChatAnthropic | ChatOpenAI:
             f"error_type={type(exc).__name__}: {exc}"
         )
         raise LLMClientError(message) from exc
+
+
+def call_llm(
+    prompt: str,
+    workflow_id: str = "",
+    stage: str = "",
+    emitter=None,
+) -> str:
+    """Invoke the LLM synchronously and emit an observability event.
+
+    Returns the response content as a string.
+    Raises LLMClientError on failure (observability failure never propagates).
+    """
+    from core.observability import default_emitter as _default_emitter
+
+    import time
+
+    _emitter = emitter if emitter is not None else _default_emitter
+    client = get_llm_client()
+    start = time.monotonic()
+    try:
+        response = client.invoke(prompt)
+        return str(getattr(response, "content", ""))
+    finally:
+        latency_ms = int((time.monotonic() - start) * 1000)
+        content = str(getattr(response, "content", "")) if "response" in dir() else ""
+        # Extract token counts — normalize Anthropic vs OpenAI field names
+        usage = {}
+        if "response" in dir() and hasattr(response, "response_metadata"):
+            usage = response.response_metadata.get("usage", {})
+        input_tokens = usage.get("input_tokens") or usage.get("prompt_tokens") or 0
+        output_tokens = usage.get("output_tokens") or usage.get("completion_tokens") or 0
+        _emitter.emit_llm_call(
+            workflow_id=workflow_id,
+            stage=stage,
+            model=SETTINGS.model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            latency_ms=latency_ms,
+        )

@@ -235,12 +235,11 @@ class ProcurementAgents:
             f"Checks: {json.dumps(result, ensure_ascii=True)}"
         )
         try:
-            from core.llm_client import LLMClientError, get_llm_client
+            from core.llm_client import LLMClientError, call_llm
         except RuntimeError as exc:
             raise ProcurementWorkflowError(str(exc)) from exc
         try:
-            response = await asyncio.to_thread(get_llm_client().invoke, prompt)
-            content = clean_text(getattr(response, "content", response))
+            content = clean_text(await asyncio.to_thread(call_llm, prompt))
             return content or "No risk summary provided."
         except (LLMClientError, RuntimeError, TypeError, ValueError) as exc:
             raise ProcurementWorkflowError(f"Due diligence LLM call failed: {exc}") from exc
