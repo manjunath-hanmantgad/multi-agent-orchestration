@@ -25,9 +25,15 @@ def _error_payload(message: str) -> dict[str, Any]:
 
 
 def _configure_cors(app: FastAPI) -> None:
+    origins = [
+        "http://localhost:3000",
+        os.getenv("FRONTEND_URL", ""),
+    ]
+    # Remove empty strings for environments where FRONTEND_URL is not set
+    origins = [o for o in origins if o]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
