@@ -25,10 +25,13 @@ from core.schemas import AuditEventORM, CRMRecordORM, WorkflowRunORM
 from core.state import StateManager
 from workflows.compliance_review.agents import ComplianceReviewAgents
 from workflows.compliance_review.workflow import ComplianceReviewWorkflow
+from workflows.incident_triage.agents import IncidentTriageAgents
+from workflows.incident_triage.workflow import IncidentTriageWorkflow
 
 APPROVED_ID = "00000000-0000-0000-0000-000000000101"
 PAUSED_ID = "00000000-0000-0000-0000-000000000202"
 REJECTED_ID = "00000000-0000-0000-0000-000000000303"
+TRIAGE_PAUSED_ID = "00000000-0000-0000-0000-000000000404"
 DEFAULT_CHECKPOINT_DB_URL = "./checkpoints.db"
 
 
@@ -39,12 +42,13 @@ async def seed_demo() -> None:
     await create_tables()
     now = datetime.now(timezone.utc).replace(microsecond=0)
     async with AsyncSessionLocal() as session:
-        await _clear_existing(session, [APPROVED_ID, PAUSED_ID, REJECTED_ID])
+        await _clear_existing(session, [APPROVED_ID, PAUSED_ID, REJECTED_ID, TRIAGE_PAUSED_ID])
         session.add_all(_workflow_rows(now))
         session.add_all(_audit_rows(now))
         session.add(_crm_row(now))
         await session.commit()
     await _seed_paused_via_langgraph()
+    await _seed_triage_paused_via_langgraph()
 
 
 async def _clear_existing(session: object, workflow_ids: list[str]) -> None:
@@ -200,9 +204,10 @@ def _ensure_mock_data_files() -> None:
 
 def _print_summary() -> None:
     print("Seeded demo workflows:")
-    print(f"- APPROVED: {APPROVED_ID}")
-    print(f"- PAUSED:   {PAUSED_ID}")
-    print(f"- REJECTED: {REJECTED_ID}")
+    print(f"- APPROVED:       {APPROVED_ID}")
+    print(f"- PAUSED:         {PAUSED_ID}")
+    print(f"- REJECTED:       {REJECTED_ID}")
+    print(f"- TRIAGE PAUSED:  {TRIAGE_PAUSED_ID}")
 
 
 async def _seed_paused_via_langgraph() -> None:
@@ -231,6 +236,58 @@ async def _seed_paused_via_langgraph() -> None:
         checkpoint = await state_manager.load_checkpoint(PAUSED_ID)
         if not isinstance(checkpoint, dict) or not checkpoint:
             raise RuntimeError(f"Checkpoint missing for seeded paused workflow: {PAUSED_ID}")
+
+
+async def _seed_triage_paused_via_langgraph() -> None:
+    """Create the paused incident triage demo workflow through real graph execution."""
+    state_manager = StateManager()
+    audit_logger = AuditLogger()
+    escalation = HumanEscalationManager(state_manager=state_manager, audit_logger=audit_logger)
+    agents = IncidentTriageAgents(
+        state_manager=state_manager,
+        audit_logger=audit_logger,
+        escalation_manager=escalation,
+        severity_scorer=_triage_severity_scorer,
+    )
+    async with AsyncSqliteSaver.from_conn_string(_checkpoint_db_url()) as checkpointer:
+        await checkpointer.setup()
+        workflow = IncidentTriageWorkflow(
+            checkpointer=checkpointer,
+            agents=agents,
+            state_manager=state_manager,
+        )
+        payload = {
+            "workflow_id": TRIAGE_PAUSED_ID,
+            "incident_text": (
+                "Production payment service is down — all transactions failing with HTTP 503. "
+                "Error rate 100% for the past 8 minutes. Revenue impact ongoing. "
+                "On-call engineer has been paged. Runbook: https://wiki.internal/runbooks/payments-down"
+            ),
+            "metadata": {
+                "source": "PagerDuty",
+                "service": "payment-service",
+                "environment": "production",
+                "alert_id": "PD-DEMO-001",
+            },
+        }
+        result = await workflow.start(payload)
+        if result.status != "PAUSED":
+            raise RuntimeError(f"Expected PAUSED status for seeded triage workflow, got: {result.status}")
+        checkpoint = await state_manager.load_checkpoint(TRIAGE_PAUSED_ID)
+        if not isinstance(checkpoint, dict) or not checkpoint:
+            raise RuntimeError(f"Checkpoint missing for seeded triage workflow: {TRIAGE_PAUSED_ID}")
+
+
+def _triage_severity_scorer(incident_text: str) -> dict[str, object]:  # noqa: ARG001
+    """Deterministic P1 severity scorer used during demo seeding."""
+    return {
+        "severity_level": "P1",
+        "reasoning": (
+            "Production payment service is fully down with 100% error rate. "
+            "All transactions are failing — direct, ongoing revenue impact. "
+            "Classified P1: critical production outage requiring immediate human approval."
+        ),
+    }
 
 
 def _load_compliance_case_payload() -> dict[str, object]:

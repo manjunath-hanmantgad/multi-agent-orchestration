@@ -20,6 +20,12 @@ const severityColor: Record<string, "destructive" | "secondary" | "default" | "o
   P4: "secondary",
 };
 
+function checkpointState(run: WorkflowRun): Record<string, unknown> {
+  const payload = (run.payload ?? {}) as Record<string, unknown>;
+  const checkpoint = (payload.checkpoint_data ?? {}) as Record<string, unknown>;
+  return (checkpoint.state ?? {}) as Record<string, unknown>;
+}
+
 export default function TriagePage() {
   const params = useParams();
   const workflowId = params.id as string;
@@ -52,10 +58,11 @@ export default function TriagePage() {
     fetchWorkflow();
   }, [workflowId]);
 
-  const severityLevel =
-    (workflow?.payload as Record<string, unknown>)?.severity_level as string | undefined;
-  const severityReasoning =
-    (workflow?.payload as Record<string, unknown>)?.severity_reasoning as string | undefined;
+  const state = workflow ? checkpointState(workflow) : {};
+  const severityLevel = state.severity_level as string | undefined;
+  const severityReasoning = state.severity_reasoning as string | undefined;
+  const incidentText = state.incident_text as string | undefined;
+  const metadata = (state.metadata ?? {}) as Record<string, string>;
 
   if (loading) {
     return (
@@ -93,25 +100,47 @@ export default function TriagePage() {
         description={`Workflow: ${workflowId}`}
       />
 
-      <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="p-6 space-y-6">
         {/* Severity card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Severity
+              Severity Assessment
               {severityLevel && (
                 <Badge variant={badgeVariant}>{severityLevel}</Badge>
               )}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            {severityReasoning ? (
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {severityReasoning}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">No reasoning available.</p>
+          <CardContent className="space-y-4">
+            {incidentText && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Incident</p>
+                <p className="text-sm whitespace-pre-wrap">{incidentText}</p>
+              </div>
             )}
+            {Object.keys(metadata).length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Metadata</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {Object.entries(metadata).map(([k, v]) => (
+                    <div key={k} className="text-sm">
+                      <span className="font-medium">{k}: </span>
+                      <span className="text-muted-foreground">{v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Reasoning</p>
+              {severityReasoning ? (
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {severityReasoning}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">No reasoning available.</p>
+              )}
+            </div>
           </CardContent>
         </Card>
 
