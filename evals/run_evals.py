@@ -59,9 +59,14 @@ def run_incident_triage(case: dict) -> tuple[bool, str]:
         )
         result = await workflow.start(input_data)
         expected_status = expected.get("final_status", expected.get("status", "COMPLETED"))
+        expected_stage = expected["current_stage"]  # KeyError if missing — case is malformed
         status_ok = result.status == expected_status
         detail = f"status={result.status}, severity_level={result.severity_level}"
-        return status_ok, detail  # severity echo is not tested — routing is what matters
+        run = await state_manager.get_run(result.workflow_id)
+        actual_stage = run.current_stage if run else None
+        stage_ok = actual_stage == expected_stage
+        detail += f", stage={actual_stage}"
+        return status_ok and stage_ok, detail  # severity echo is not tested — routing is what matters
 
     try:
         return asyncio.run(_run())

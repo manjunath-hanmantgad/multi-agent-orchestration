@@ -27,9 +27,9 @@
 [PASS] esc-004 invalid payload: risk scorer must return score 0-100 and non-empty reasoning
 [PASS] state-001 next_status=RUNNING
 [PASS] state-002 next_status=APPROVED
-[PASS] triage-001 status=PAUSED, severity_level=P1
-[PASS] triage-002 status=COMPLETED, severity_level=P4
-[PASS] triage-003 status=PAUSED, severity_level=P2
+[PASS] triage-001 status=PAUSED, severity_level=P1, stage=human_approval
+[PASS] triage-002 status=COMPLETED, severity_level=P4, stage=resolution_report
+[PASS] triage-003 status=PAUSED, severity_level=P2, stage=human_approval
 
 Summary
 Executed: 13
@@ -41,5 +41,5 @@ Pass rate: 100.0%
 
 ## Notes
 
-- Severity is injected from `input.severity_level`, not expected — tests routing logic, not severity echo.
-- `classify_severity()` raises `ValueError` for unknown labels; `route_after_escalation` fail-safe routes unknown labels to human approval.
+- Triage eval now asserts `current_stage` in addition to `final_status` — all 3 pass.
+- MCP integration test runs through FastAPI TestClient (ASGI in-process) — no real HTTP server needed.
