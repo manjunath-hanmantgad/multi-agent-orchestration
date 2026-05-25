@@ -257,12 +257,11 @@ class ComplianceReviewAgents:
 
     async def _invoke_llm(self, prompt: str) -> str:
         try:
-            from core.llm_client import LLMClientError, get_llm_client
+            from core.llm_client import LLMClientError, call_llm
         except RuntimeError as exc:
             raise ComplianceWorkflowError(str(exc)) from exc
         try:
-            response = await asyncio.to_thread(get_llm_client().invoke, prompt)
-            return str(getattr(response, "content", response))
+            return await asyncio.to_thread(call_llm, prompt)
         except (LLMClientError, RuntimeError, TypeError, ValueError) as exc:
             raise ComplianceWorkflowError(f"Risk scoring LLM call failed: {exc}") from exc
 

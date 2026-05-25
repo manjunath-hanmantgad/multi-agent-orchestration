@@ -196,17 +196,20 @@ python scripts/init_db.py
 # 4. Seed demo data (creates three pre-run workflows: APPROVED, PAUSED, REJECTED)
 python scripts/seed_demo.py
 
-# 5. Start the platform
-uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload &
-uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
+# 5. Start the API
+uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
+
+# 6. Start the frontend (separate terminal)
+cd frontend && npm run dev
 ```
 
 | Endpoint | URL |
 |----------|-----|
-| Dashboard | http://127.0.0.1:8001/dashboard |
-| Human review screen | http://127.0.0.1:8001/review/00000000-0000-0000-0000-000000000202 |
-| Audit trail | http://127.0.0.1:8001/audit/00000000-0000-0000-0000-000000000202 |
-| API health | http://127.0.0.1:8000/api/health |
+| Dashboard | http://localhost:3000 |
+| Human review screen | http://localhost:3000/review/00000000-0000-0000-0000-000000000202 |
+| Incident triage review | http://localhost:3000/triage/00000000-0000-0000-0000-000000000202 |
+| Audit trail | http://localhost:3000/audit/00000000-0000-0000-0000-000000000202 |
+| API health | http://localhost:8000/api/health |
 
 ---
 
@@ -230,7 +233,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 
 **Five minutes, three screens:**
 
-1. **Dashboard** — open `/dashboard`. Show three workflows in different states: `APPROVED`, `PAUSED`, `REJECTED`. Status badges reflect live database state.
+1. **Dashboard** — open `http://localhost:3000`. Show three workflows in different states: `APPROVED`, `PAUSED`, `REJECTED`. Status badges reflect live database state.
 
 2. **Human review screen** — open the `PAUSED` workflow. The page shows extracted document fields, rule evaluation results (pass/fail/flag per rule), the LLM-generated risk score and reasoning, and a decision form. Submit `APPROVED`.
 
@@ -300,3 +303,99 @@ All LLM calls are mocked in tests. No API keys required to run the test suite.
 
 Full component descriptions, data layer schema, and Azure production path:
 [docs/architecture.md](docs/architecture.md)
+
+---
+
+## MCP Server Setup
+
+The project includes a standalone MCP (Model Context Protocol) server that exposes workflow operations as tools to LLM agents (Claude Desktop, Claude Code).
+
+### Prerequisites
+
+- Python >= 3.10 (the `mcp` SDK requires it)
+- The FastAPI gateway running (see Quickstart above)
+
+### Configure Claude Desktop
+
+Add the following block to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "workflow-orchestrator": {
+      "command": "/path/to/mcp-server/venv/bin/python",
+      "args": [
+        "/absolute/path/to/mcp-server/server.py"
+      ],
+      "env": {
+        "WORKFLOW_API_BASE_URL": "http://127.0.0.1:8000",
+        "WORKFLOW_API_TOKEN": ""
+      }
+    }
+  }
+}
+```
+
+On macOS, the config file is at: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+### Manual startup
+
+```bash
+cd mcp-server
+pip install -r requirements.txt
+export WORKFLOW_API_BASE_URL=http://127.0.0.1:8000
+python server.py
+```
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `start_workflow` | Starts a new workflow run; returns `workflow_id`, `status`, `current_stage` |
+| `get_status` | Returns `workflow_id`, `status`, `current_stage`, `created_at` for a workflow |
+| `submit_decision` | Submits an APPROVE/REJECT decision for a paused workflow |
+| `get_audit_trail` | Returns the ordered audit event timeline as plain text |
+
+All MCP output goes to stderr — stdout is reserved for the JSON-RPC protocol. Server errors and connection failures are logged to stderr and never crash the server.
+
+---
+
+## Eval Harness
+
+The project includes an evaluation harness for measuring workflow correctness without a live LLM. All test cases use deterministic scorers — no API key required.
+
+### Running
+
+```bash
+python evals/run_evals.py
+```
+
+### Example output
+
+```
+[PASS] rule-001 actual={'passed': 1, 'failed': 0, 'flagged': 0}
+[PASS] rule-002 actual={'passed': 1, 'failed': 0, 'flagged': 0}
+[PASS] rule-003 actual={'passed': 0, 'failed': 1, 'flagged': 0}
+[PASS] esc-001 validated score=80
+[PASS] esc-002 validated score=10
+[PASS] state-001 next_status=RUNNING
+[PASS] state-002 next_status=APPROVED
+[PASS] triage-001 status=PAUSED, severity_level=P1
+...
+Summary
+Executed: 13
+Passed:   13
+Skipped:  0
+Failed:   0
+Pass rate: 100.0%
+```
+
+### Adding new scenarios
+
+1. Add a case to `evals/golden_dataset.json` with fields: `id`, `description`, `category`, `input`, `expected`, `requires_live_llm`
+2. Write a runner function in `evals/run_evals.py` (e.g. `run_my_category`)
+3. Register the runner in the `runners` dict inside `main()`
+4. Run `python evals/run_evals.py` to verify
+
+Current categories: `rule_engine`, `escalation_trigger`, `state_transition`, `incident_triage`
+Current case count: 13 (all passing, 100.0%)
