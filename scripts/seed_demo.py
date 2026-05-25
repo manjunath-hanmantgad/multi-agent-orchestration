@@ -143,7 +143,7 @@ def _payload_for_rejected() -> dict[str, object]:
 
 
 def _base_state(workflow_id: str, risk_score: int, risk_reasoning: str) -> dict[str, object]:
-    doc_path = "app/mock_data/sample_documents/meridian_compliance_declaration.pdf"
+    doc_path = "scripts/mock_data/sample_documents/meridian_compliance_declaration.pdf"
     return {
         "workflow_id": workflow_id,
         "document_path": doc_path,
@@ -190,12 +190,12 @@ def _checkpoint_payload(stage: str, status: str, state: dict[str, object]) -> di
 
 
 def _ensure_mock_data_files() -> None:
-    base = Path("app/mock_data")
+    base = Path(__file__).resolve().parent / "mock_data"
     base.mkdir(parents=True, exist_ok=True)
     if not (base / "compliance_case.json").exists():
-        raise RuntimeError("Missing app/mock_data/compliance_case.json")
+        raise RuntimeError(f"Missing {base}/compliance_case.json")
     if not (base / "procurement_case.json").exists():
-        raise RuntimeError("Missing app/mock_data/procurement_case.json")
+        raise RuntimeError(f"Missing {base}/procurement_case.json")
 
 
 def _print_summary() -> None:
@@ -235,10 +235,10 @@ async def _seed_paused_via_langgraph() -> None:
 
 def _load_compliance_case_payload() -> dict[str, object]:
     """Load demo compliance payload used to generate the paused workflow."""
-    case_path = Path("app/mock_data/compliance_case.json")
+    case_path = Path(__file__).resolve().parent / "mock_data" / "compliance_case.json"
     data = json.loads(case_path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
-        raise RuntimeError("app/mock_data/compliance_case.json must contain a JSON object")
+        raise RuntimeError(f"{case_path} must contain a JSON object")
     return dict(data)
 
 
