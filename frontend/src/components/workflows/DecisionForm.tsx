@@ -20,29 +20,45 @@ import type { WorkflowDecisionValue } from "@/types";
 
 const decisionSchema = z
   .object({
-    decision: z.union([z.literal("APPROVE"), z.literal("REJECT")]),
+    decision: z.union([
+      z.literal("APPROVE"),
+      z.literal("REJECT"),
+      z.literal("REQUEST_MORE_INFO"),
+    ]),
     reason: z.string().optional(),
-  }).refine(
-  (data) => {
-    if (data.decision === "REJECT") {
-      return data.reason !== undefined && data.reason.trim().length > 0;
+  })
+  .refine(
+    (data) => {
+      if (data.decision === "REJECT") {
+        return data.reason !== undefined && data.reason.trim().length > 0;
+      }
+      return true;
+    },
+    {
+      message: "A reason is required when rejecting.",
+      path: ["reason"],
     }
-    return true;
-  },
-  {
-    message: "A reason is required when rejecting.",
-    path: ["reason"],
-  }
-);
+  );
 
 type DecisionFormValues = z.infer<typeof decisionSchema>;
+
+const DECISION_MAP: Record<string, WorkflowDecisionValue> = {
+  APPROVE: "APPROVED",
+  REJECT: "REJECTED",
+  REQUEST_MORE_INFO: "REQUEST_MORE_INFO",
+};
 
 interface DecisionFormProps {
   workflowId: string;
   onSuccess?: () => void;
+  showRequestMoreInfo?: boolean;
 }
 
-export function DecisionForm({ workflowId, onSuccess }: DecisionFormProps) {
+export function DecisionForm({
+  workflowId,
+  onSuccess,
+  showRequestMoreInfo = false,
+}: DecisionFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -60,8 +76,7 @@ export function DecisionForm({ workflowId, onSuccess }: DecisionFormProps) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const mappedDecision: WorkflowDecisionValue =
-        values.decision === "APPROVE" ? "APPROVED" : "REJECTED";
+      const mappedDecision = DECISION_MAP[values.decision];
       await api.workflows.decide(workflowId, {
         actor: "HUMAN",
         decision: mappedDecision,
@@ -102,6 +117,14 @@ export function DecisionForm({ workflowId, onSuccess }: DecisionFormProps) {
                       REJECT
                     </label>
                   </div>
+                  {showRequestMoreInfo && (
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="REQUEST_MORE_INFO" id="request-more-info" />
+                      <label htmlFor="request-more-info" className="text-sm font-medium cursor-pointer">
+                        REQUEST MORE INFO
+                      </label>
+                    </div>
+                  )}
                 </RadioGroup>
               </FormControl>
               <FormMessage />
@@ -116,14 +139,17 @@ export function DecisionForm({ workflowId, onSuccess }: DecisionFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  Reason {selected === "REJECT" && <span className="text-destructive">*</span>}
+                  Reason{" "}
+                  {selected === "REJECT" && <span className="text-destructive">*</span>}
                 </FormLabel>
                 <FormControl>
                   <Textarea
                     placeholder={
                       selected === "REJECT"
                         ? "Reason is required when rejecting."
-                        : "Optional notes for approval."
+                        : selected === "REQUEST_MORE_INFO"
+                          ? "Describe what additional information is needed."
+                          : "Optional notes for approval."
                     }
                     className="min-h-[80px]"
                     {...field}

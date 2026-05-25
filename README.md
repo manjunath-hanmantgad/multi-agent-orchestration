@@ -196,17 +196,20 @@ python scripts/init_db.py
 # 4. Seed demo data (creates three pre-run workflows: APPROVED, PAUSED, REJECTED)
 python scripts/seed_demo.py
 
-# 5. Start the platform
-uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload &
-uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
+# 5. Start the API
+uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
+
+# 6. Start the frontend (separate terminal)
+cd frontend && npm run dev
 ```
 
 | Endpoint | URL |
 |----------|-----|
-| Dashboard | http://127.0.0.1:8001/dashboard |
-| Human review screen | http://127.0.0.1:8001/review/00000000-0000-0000-0000-000000000202 |
-| Audit trail | http://127.0.0.1:8001/audit/00000000-0000-0000-0000-000000000202 |
-| API health | http://127.0.0.1:8000/api/health |
+| Dashboard | http://localhost:3000 |
+| Human review screen | http://localhost:3000/review/00000000-0000-0000-0000-000000000202 |
+| Incident triage review | http://localhost:3000/triage/00000000-0000-0000-0000-000000000202 |
+| Audit trail | http://localhost:3000/audit/00000000-0000-0000-0000-000000000202 |
+| API health | http://localhost:8000/api/health |
 
 ---
 
@@ -230,7 +233,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 
 **Five minutes, three screens:**
 
-1. **Dashboard** — open `/dashboard`. Show three workflows in different states: `APPROVED`, `PAUSED`, `REJECTED`. Status badges reflect live database state.
+1. **Dashboard** — open `http://localhost:3000`. Show three workflows in different states: `APPROVED`, `PAUSED`, `REJECTED`. Status badges reflect live database state.
 
 2. **Human review screen** — open the `PAUSED` workflow. The page shows extracted document fields, rule evaluation results (pass/fail/flag per rule), the LLM-generated risk score and reasoning, and a decision form. Submit `APPROVED`.
 
