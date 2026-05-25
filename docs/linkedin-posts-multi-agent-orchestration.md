@@ -8,7 +8,7 @@
 
 ---
 
-## Post 1 — The Problem
+## Post 1 — The Problem -- posted on May 24
 **Visual:** README architecture diagram (screenshot from GitHub)
 
 ```

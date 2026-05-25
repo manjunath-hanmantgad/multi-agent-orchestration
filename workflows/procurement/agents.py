@@ -224,8 +224,6 @@ class ProcurementAgents:
             payload = self._risk_summarizer(vendor_data, result)
             value = await payload if asyncio.iscoroutine(payload) else payload
             return clean_text(value) or "No risk summary provided."
-        import sys as _sys
-        print(f"DEBUG _risk_summary: id(type(self))={id(type(self))}, _invoke_llm={type(self).__dict__.get('_invoke_llm', 'NOT_IN_DICT')!r}", file=_sys.stderr)
         return await self._invoke_llm(vendor_data, result)
 
     async def _invoke_llm(self, vendor_data: dict[str, Any], result: dict[str, Any]) -> str:
