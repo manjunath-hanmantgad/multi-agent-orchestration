@@ -97,6 +97,11 @@ def main() -> int:
     print(f"Passed:   {passed}")
     print(f"Skipped:  {skipped}")
     print(f"Failed:   {len(failures)}")
+    if executed > 0:
+        pass_rate = passed / executed * 100
+        print(f"Pass rate: {pass_rate:.1f}%")
+    else:
+        print("Pass rate: N/A (no cases executed)")
 
     if failures:
         print("\nFailed cases:")

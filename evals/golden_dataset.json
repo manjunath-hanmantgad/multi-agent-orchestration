@@ -133,6 +133,42 @@
       "input": {"decision": "APPROVED"},
       "expected": {"next_status": "APPROVED"},
       "requires_live_llm": false
+    },
+    {
+      "id": "triage-001",
+      "description": "P1 incident triggers human approval interrupt",
+      "category": "incident_triage",
+      "input": {
+        "incident_text": "Production database is down. All customer transactions are failing. Revenue impact is critical.",
+        "metadata": {"reported_by": "ops-team", "system": "payments"}
+      },
+      "expected": {"final_status": "PAUSED", "current_stage": "human_approval"},
+      "requires_live_llm": true,
+      "blocked_reason": "incident_triage workflow not yet implemented"
+    },
+    {
+      "id": "triage-002",
+      "description": "P4 incident auto-resolves without human approval",
+      "category": "incident_triage",
+      "input": {
+        "incident_text": "Minor UI misalignment on the settings page in dark mode. No functional impact.",
+        "metadata": {"reported_by": "qa-team", "system": "frontend"}
+      },
+      "expected": {"final_status": "COMPLETED", "current_stage": "resolution_report"},
+      "requires_live_llm": true,
+      "blocked_reason": "incident_triage workflow not yet implemented"
+    },
+    {
+      "id": "triage-003",
+      "description": "P2 incident with partial system degradation triggers escalation",
+      "category": "incident_triage",
+      "input": {
+        "incident_text": "Search service returning stale results for 30% of queries. Degraded experience for a subset of users.",
+        "metadata": {"reported_by": "monitoring-alerts", "system": "search"}
+      },
+      "expected": {"final_status": "PAUSED", "current_stage": "human_approval"},
+      "requires_live_llm": true,
+      "blocked_reason": "incident_triage workflow not yet implemented"
     }
   ]
 }
