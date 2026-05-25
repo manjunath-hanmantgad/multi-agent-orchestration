@@ -215,29 +215,35 @@ cd frontend && npm run dev
 
 ## Screenshots
 
-**Dashboard** — three workflow states, live from the database
+**Dashboard** — four live workflows across two types, colour-coded status badges
 
 ![Dashboard](demo/dashboard.png)
 
-**Human review screen** — extracted fields, rule results, risk score, decision form
+**Compliance review** — extracted document fields, per-rule pass/fail/severity, LLM risk score, decision form with Request More Info
 
-![Human Review](demo/review-screen.png)
+![Compliance Review](demo/review-screen.png)
 
-**Audit trail** — ordered event timeline, SYSTEM and HUMAN actor labels
+**Audit trail** — immutable ordered event timeline, SYSTEM and HUMAN actor labels, expandable event payloads
 
 ![Audit Trail](demo/audit-trail.png)
+
+**Incident triage** — P1 severity badge, incident description, PagerDuty metadata, reasoning, APPROVE/REJECT decision form
+
+![Incident Triage](demo/triage-screen.png)
 
 ---
 
 ## Demo Walkthrough
 
-**Five minutes, three screens:**
+**Five minutes, four screens:**
 
-1. **Dashboard** — open `http://localhost:3000`. Show three workflows in different states: `APPROVED`, `PAUSED`, `REJECTED`. Status badges reflect live database state.
+1. **Dashboard** — open `http://localhost:3000`. Four seeded workflows across two types: `APPROVED`, `PAUSED` (compliance), `REJECTED`, and a `PAUSED` incident triage. Status badges reflect live database state.
 
-2. **Human review screen** — open the `PAUSED` workflow. The page shows extracted document fields, rule evaluation results (pass/fail/flag per rule), the LLM-generated risk score and reasoning, and a decision form. Submit `APPROVED`.
+2. **Compliance review** — open the PAUSED compliance workflow (`/review/00000000-0000-0000-0000-000000000202`). Shows extracted document fields, rule results with per-rule severity badges, LLM risk score and reasoning, decision form with Approve / Reject / Request More Info. Submit `APPROVED`.
 
-3. **Audit trail** — open `/audit/{id}` for the same workflow. The page shows the complete ordered event timeline: every agent action, every rule result, the human decision, and the final certificate generation — all with timestamps and actor labels.
+3. **Audit trail** — open `/audit/00000000-0000-0000-0000-000000000202`. Complete ordered event timeline: every agent action, rule evaluation, human decision, and certificate generation — all with timestamps, SYSTEM/HUMAN actor labels, and expandable event payloads.
+
+4. **Incident triage** — open `/triage/00000000-0000-0000-0000-000000000404`. Shows the P1 severity badge, incident description, PagerDuty source metadata, LLM classification reasoning, and an APPROVE/REJECT decision form.
 
 ---
 
