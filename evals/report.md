@@ -11,8 +11,8 @@
 | rule_engine | 4 | 4 | 0 | 100.0% |
 | escalation_trigger | 4 | 4 | 0 | 100.0% |
 | state_transition | 2 | 2 | 0 | 100.0% |
-| incident_triage | 0 | 0 | 3 | N/A (blocked) |
-| **Total** | **10** | **10** | **3** | **100.0%** |
+| incident_triage | 3 | 3 | 0 | 100.0% |
+| **Total** | **13** | **13** | **0** | **100.0%** |
 
 ## Per-case output
 
@@ -27,19 +27,19 @@
 [PASS] esc-004 invalid payload: risk scorer must return score 0-100 and non-empty reasoning
 [PASS] state-001 next_status=RUNNING
 [PASS] state-002 next_status=APPROVED
-[SKIP] triage-001 requires live LLM
-[SKIP] triage-002 requires live LLM
-[SKIP] triage-003 requires live LLM
+[PASS] triage-001 status=PAUSED, severity_level=P1
+[PASS] triage-002 status=COMPLETED, severity_level=P4
+[PASS] triage-003 status=PAUSED, severity_level=P2
 
 Summary
-Executed: 10
-Passed:   10
-Skipped:  3
+Executed: 13
+Passed:   13
+Skipped:  0
 Failed:   0
 Pass rate: 100.0%
 ```
 
 ## Notes
 
-- Incident triage cases (triage-001 to triage-003) are blocked until TASK-06 implements the incident_triage workflow module. They will be unblocked when `requires_live_llm` is set to `false` and a `run_incident_triage` runner is added.
-- All 10 executed cases pass. No regressions from the base platform.
+- Severity is injected from `input.severity_level`, not expected — tests routing logic, not severity echo.
+- `classify_severity()` raises `ValueError` for unknown labels; `route_after_escalation` fail-safe routes unknown labels to human approval.

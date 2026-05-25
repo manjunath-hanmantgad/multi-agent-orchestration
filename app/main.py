@@ -61,6 +61,26 @@ async def review(request: Request, workflow_id: str) -> Any:
     )
 
 
+@app.get("/triage/{workflow_id}")
+async def triage_review(request: Request, workflow_id: str) -> Any:
+    run = await _get_run(workflow_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    state = _checkpoint_state(run)
+    context = {
+        "workflow_id": workflow_id,
+        "status": run.status,
+        "current_stage": run.current_stage,
+        "severity_level": state.get("severity_level", "-"),
+        "severity_reasoning": state.get("severity_reasoning", "Not available"),
+        "incident_preview": (state.get("incident_text", "") or "")[:500],
+    }
+    return templates.TemplateResponse(
+        "review.html",
+        {"request": request, "context": context, "page_title": "Incident Triage Review"},
+    )
+
+
 @app.get("/audit/{workflow_id}")
 async def audit_page(request: Request, workflow_id: str) -> Any:
     run = await _get_run(workflow_id)

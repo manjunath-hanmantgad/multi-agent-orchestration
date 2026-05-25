@@ -14,6 +14,61 @@ from core.services.rule_engine import RuleEngine
 from workflows.compliance_review.schema import risk_payload
 
 
+def run_incident_triage(case: dict) -> tuple[bool, str]:
+    """Run an incident_triage eval case against the workflow directly."""
+    import asyncio
+
+    from langgraph.checkpoint.memory import MemorySaver
+
+    from core.audit import AuditLogger
+    from core.escalation import HumanEscalationManager
+    from core.state import StateManager
+    from workflows.incident_triage.agents import IncidentTriageAgents
+    from workflows.incident_triage.workflow import IncidentTriageWorkflow
+
+    input_data = case["input"]
+    expected = case["expected"]
+
+    async def _run() -> tuple[bool, str]:
+        # Build inside event loop for asyncio.Lock()
+        state_manager = StateManager()
+        audit_logger = AuditLogger()
+        escalation = HumanEscalationManager(
+            state_manager=state_manager, audit_logger=audit_logger
+        )
+
+        # Deterministic scorer — tests routing logic, not LLM classification accuracy
+        input_severity = input_data["severity_level"]
+
+        def _scorer(incident_text: str) -> dict:
+            return {
+                "severity_level": input_severity,
+                "reasoning": f"Eval severity: {input_severity}",
+            }
+
+        agents = IncidentTriageAgents(
+            state_manager=state_manager,
+            audit_logger=audit_logger,
+            escalation_manager=escalation,
+            severity_scorer=_scorer,
+        )
+        workflow = IncidentTriageWorkflow(
+            agents=agents,
+            state_manager=state_manager,
+            checkpointer=MemorySaver(),
+        )
+        result = await workflow.start(input_data)
+        expected_status = expected.get("final_status", expected.get("status", "COMPLETED"))
+        status_ok = result.status == expected_status
+        detail = f"status={result.status}, severity_level={result.severity_level}"
+        return status_ok, detail  # severity echo is not tested — routing is what matters
+
+    try:
+        return asyncio.run(_run())
+    except Exception as exc:
+        return False, f"workflow error: {exc}"
+
+
 def run_rule_engine(case: dict) -> tuple[bool, str]:
     payload = case["input"]
     expected = case["expected"]
@@ -62,6 +117,7 @@ def main() -> int:
         "rule_engine": run_rule_engine,
         "escalation_trigger": run_escalation_trigger,
         "state_transition": run_state_transition,
+        "incident_triage": run_incident_triage,
     }
 
     executed = 0

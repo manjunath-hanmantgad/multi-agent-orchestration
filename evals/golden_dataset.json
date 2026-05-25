@@ -140,11 +140,11 @@
       "category": "incident_triage",
       "input": {
         "incident_text": "Production database is down. All customer transactions are failing. Revenue impact is critical.",
-        "metadata": {"reported_by": "ops-team", "system": "payments"}
+        "metadata": {"reported_by": "ops-team", "system": "payments"},
+        "severity_level": "P1"
       },
       "expected": {"final_status": "PAUSED", "current_stage": "human_approval"},
-      "requires_live_llm": true,
-      "blocked_reason": "incident_triage workflow not yet implemented"
+      "requires_live_llm": false
     },
     {
       "id": "triage-002",
@@ -152,11 +152,11 @@
       "category": "incident_triage",
       "input": {
         "incident_text": "Minor UI misalignment on the settings page in dark mode. No functional impact.",
-        "metadata": {"reported_by": "qa-team", "system": "frontend"}
+        "metadata": {"reported_by": "qa-team", "system": "frontend"},
+        "severity_level": "P4"
       },
       "expected": {"final_status": "COMPLETED", "current_stage": "resolution_report"},
-      "requires_live_llm": true,
-      "blocked_reason": "incident_triage workflow not yet implemented"
+      "requires_live_llm": false
     },
     {
       "id": "triage-003",
@@ -164,11 +164,11 @@
       "category": "incident_triage",
       "input": {
         "incident_text": "Search service returning stale results for 30% of queries. Degraded experience for a subset of users.",
-        "metadata": {"reported_by": "monitoring-alerts", "system": "search"}
+        "metadata": {"reported_by": "monitoring-alerts", "system": "search"},
+        "severity_level": "P2"
       },
       "expected": {"final_status": "PAUSED", "current_stage": "human_approval"},
-      "requires_live_llm": true,
-      "blocked_reason": "incident_triage workflow not yet implemented"
+      "requires_live_llm": false
     }
   ]
 }
